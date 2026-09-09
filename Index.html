@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0B0E14">
+<title>Kamas Stat</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237B6CF0'/%3E%3Ctext x='50' y='68' font-size='52' font-family='Arial, sans-serif' font-weight='800' fill='%23ffffff' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237B6CF0'/%3E%3Ctext x='50' y='68' font-size='52' font-family='Arial, sans-serif' font-weight='800' fill='%23ffffff' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Kamas%20Stat%22%2C%22short_name%22%3A%22Kamas%20Stat%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230B0E14%22%2C%22theme_color%22%3A%22%230B0E14%22%7D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kamas Stat">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0B0E14; --surface:#141924; --surface-2:#1B2230; --border:#252D3D;
+    --accent:#7B6CF0; --accent-soft:rgba(123,108,240,0.15);
+    --text:#F2F4F8; --muted:#7A8194;
+    --gain:#2DD4A7; --gain-soft:rgba(45,212,167,0.14);
+    --loss:#FF6B81; --loss-soft:rgba(255,107,129,0.14);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); font-family:'Plus Jakarta Sans', sans-serif; color:var(--text); -webkit-font-smoothing:antialiased; }
+  .app { max-width:480px; margin:0 auto; background:var(--bg); min-height:100vh; padding-bottom:84px; position:relative; }
+
+  .topbar { display:flex; justify-content:space-between; align-items:center; padding:20px 20px 16px; gap:10px; }
+  .topbar h1 { font-size:20px; font-weight:800; margin:0; letter-spacing:-0.3px; flex:1; }
+  .chip { font-size:11px; font-weight:600; color:var(--accent); background:var(--accent-soft); padding:5px 10px; border-radius:99px; white-space:nowrap; }
+  .icon-btn { width:34px; height:34px; border-radius:10px; background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; }
+
+  .toast { position:fixed; top:14px; left:50%; transform:translateX(-50%); background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:99px; z-index:50; box-shadow:0 6px 20px rgba(0,0,0,0.4); }
+
+  .pill-tabs { display:flex; gap:6px; padding:4px 20px 0; }
+  .pill-tab { flex:1; text-align:center; padding:9px 0; font-size:13px; font-weight:600; color:var(--muted); background:var(--surface); border-radius:10px; cursor:pointer; }
+  .pill-tab.active { color:#fff; background:var(--accent); }
+
+  .period-row { display:flex; gap:6px; padding:12px 20px 0; }
+  .period-pill { flex:1; padding:7px 0; text-align:center; font-size:12px; font-weight:600; color:var(--muted); border:1px solid var(--border); border-radius:99px; cursor:pointer; }
+  .period-pill.active { border-color:var(--accent); color:var(--accent); }
+
+  .section-title { padding:20px 20px 10px; font-size:13px; font-weight:700; color:var(--text); }
+  .section-title span { font-weight:500; color:var(--muted); font-size:12px; }
+
+  .rank-scroll { display:flex; gap:10px; padding:0 20px; overflow-x:auto; }
+  .rank-card { min-width:150px; background:var(--surface); border-radius:14px; padding:12px 14px; }
+  .rank-card .k { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:8px; }
+  .rank-item { display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:4px 0; }
+  .rank-empty { font-size:11px; color:var(--muted); font-style:italic; }
+  .badge { font-size:11px; font-weight:700; padding:2px 7px; border-radius:99px; }
+  .badge.up { color:var(--gain); background:var(--gain-soft); }
+  .badge.down { color:var(--loss); background:var(--loss-soft); }
+  .badge.flat { color:var(--muted); background:var(--surface-2); }
+
+  .card-list { padding:4px 20px 0; display:flex; flex-direction:column; gap:8px; }
+  .item-card { display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:14px; padding:12px 14px; cursor:pointer; }
+  .avatar { width:38px; height:38px; border-radius:10px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:var(--accent); flex:0 0 auto; }
+  .item-info { flex:1; min-width:0; }
+  .item-name { font-size:14px; font-weight:700; }
+  .item-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+  .item-spark { flex:0 0 auto; }
+  .item-trailing { text-align:right; flex:0 0 auto; }
+  .item-price { font-size:14px; font-weight:800; }
+
+  .empty-state { padding:40px 20px; text-align:center; color:var(--muted); font-size:13px; }
+
+  .fab { position:fixed; right:calc(50% - 240px + 20px); bottom:88px; width:52px; height:52px; border-radius:16px; background:var(--accent); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(123,108,240,0.4); cursor:pointer; z-index:20; }
+  @media (max-width:480px) { .fab { right:20px; } }
+
+  .sheet { margin:14px 20px 0; background:var(--surface); border-radius:18px; padding:16px; }
+  .sheet label { display:block; font-size:11px; font-weight:600; color:var(--muted); margin:12px 0 6px; }
+  .sheet label:first-child { margin-top:0; }
+  .sheet input, .sheet select { width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:11px 12px; border-radius:11px; font-size:14px; font-family:inherit; }
+  .seg { display:flex; gap:8px; }
+  .seg div { flex:1; text-align:center; padding:9px 0; border-radius:11px; background:var(--surface-2); font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .seg div.sel { background:var(--accent); color:#fff; }
+  .btn-primary { margin-top:16px; width:100%; padding:13px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn-ghost { width:100%; padding:11px; background:transparent; border:none; color:var(--loss); font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-secondary { width:100%; padding:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:13px; font-weight:600; border-radius:11px; cursor:pointer; }
+
+  .detail-head { padding:8px 20px 0; }
+  .back-btn { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; font-weight:600; padding:14px 20px 0; cursor:pointer; }
+  .detail-title { font-size:24px; font-weight:800; margin:12px 0 2px; letter-spacing:-0.4px; }
+  .detail-sub { font-size:12.5px; color:var(--muted); margin-bottom:16px; }
+
+  .stat-row { display:flex; gap:8px; padding:0 20px; }
+  .stat { flex:1; background:var(--surface); border-radius:14px; padding:12px 8px; text-align:center; }
+  .stat .v { font-size:16px; font-weight:800; }
+  .stat .l { font-size:10px; color:var(--muted); margin-top:3px; font-weight:600; }
+
+  .chart-card { margin:14px 20px 0; background:var(--surface); border-radius:16px; padding:16px 12px; }
+
+  .ing-list { margin:14px 20px 0; background:var(--surface); border-radius:16px; overflow:hidden; }
+  .ing-row { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border); font-size:13.5px; }
+  .ing-row:last-child { border-bottom:none; }
+  .ing-row.total { background:var(--surface-2); font-weight:800; }
+  .ing-row .qty-tag { color:var(--muted); font-size:12px; font-weight:600; margin-left:6px; }
+  .warn-text { color:var(--loss); font-size:11px; font-weight:600; }
+
+  .margin-card { margin:14px 20px 0; background:var(--surface); border-radius:16px; overflow:hidden; }
+  .margin-row { display:flex; justify-content:space-between; padding:11px 16px; font-size:13px; border-bottom:1px solid var(--border); color:var(--muted); }
+  .margin-row:last-child { border-bottom:none; }
+  .margin-row.result { background:var(--surface-2); color:var(--text); font-weight:800; font-size:14.5px; }
+
+  .add-ing-row { display:flex; gap:8px; margin-top:10px; }
+  .add-ing-row select { flex:2; } .add-ing-row input { flex:1; }
+  .add-ing-btn { flex:0 0 44px; background:var(--accent); border:none; color:#fff; border-radius:11px; font-size:18px; font-weight:700; }
+  .remove-x { color:var(--loss); font-size:12px; font-weight:700; cursor:pointer; padding:2px 8px; }
+
+  .history-list { margin:14px 20px 0; background:var(--surface); border-radius:16px; overflow:hidden; }
+  .history-row { display:flex; justify-content:space-between; align-items:center; padding:11px 16px; border-bottom:1px solid var(--border); font-size:12.5px; }
+  .history-row:last-child { border-bottom:none; }
+  .history-date { color:var(--muted); }
+
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:var(--surface); border-top:1px solid var(--border); display:flex; padding:10px 20px calc(10px + env(safe-area-inset-bottom)); z-index:15; }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--muted); cursor:pointer; }
+  .nav-btn.active { color:var(--accent); }
+  .nav-label { font-size:11px; font-weight:600; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+const MARKET_KEY = 'kamasstat-market-v1';
+const CRAFT_KEY = 'kamasstat-crafts-v1';
+const COMMISSION = 0.03;
+const PACK_SIZES = [1, 10, 100, 1000];
+
+// Catégories de ressources : celles liées à tes métiers (avec détection auto) + les catégories générales du jeu
+const CATEGORIES = {
+  cereales: { label: 'Céréales', emoji: '🌾', keywords: ['avoine','houblon','seigle','malt','frostiz','orge','riz','blé','ble'] },
+  plante: { label: 'Plante', emoji: '🌿', keywords: ['perce-neige','perceneige','edelweiss','trèfle à 5 feuilles','trefle a 5 feuilles','lin','pandouille','orchidée freyesque','orchidee freyesque','chanvre','menthe sauvage'] },
+  aile: { label: 'Aile', emoji: '🪽', keywords: [] },
+  badge: { label: 'Badge', emoji: '🎖️', keywords: [] },
+  biere: { label: 'Bière', emoji: '🍺', keywords: [] },
+  boisson: { label: 'Boisson', emoji: '🥤', keywords: [] },
+  carapace: { label: 'Carapace', emoji: '🐢', keywords: [] },
+  champignon: { label: 'Champignon', emoji: '🍄', keywords: [] },
+  coquille: { label: 'Coquille', emoji: '🐚', keywords: [] },
+  cuir: { label: 'Cuir', emoji: '🟤', keywords: [] },
+  emballage: { label: 'Emballage', emoji: '📦', keywords: [] },
+  essence: { label: 'Essence de gardien de donjon', emoji: '✨', keywords: [] },
+  etoffe: { label: 'Étoffe', emoji: '🧵', keywords: [] },
+  fleur: { label: 'Fleur', emoji: '🌸', keywords: [] },
+  fruit: { label: 'Fruit', emoji: '🍎', keywords: [] },
+  gelee: { label: 'Gelée', emoji: '🟢', keywords: [] },
+  graine: { label: 'Graine', emoji: '🌰', keywords: [] },
+  laine: { label: 'Laine', emoji: '🧶', keywords: [] },
+  legume: { label: 'Légume', emoji: '🥕', keywords: [] },
+  nowel: { label: 'Nowel', emoji: '🎄', keywords: [] },
+  oeil: { label: 'Œil', emoji: '👁️', keywords: [] },
+  oeuf: { label: 'Œuf', emoji: '🥚', keywords: [] },
+  oreille: { label: 'Oreille', emoji: '👂', keywords: [] },
+  os: { label: 'Os', emoji: '🦴', keywords: [] },
+  patte: { label: 'Patte', emoji: '🐾', keywords: [] },
+  peau: { label: 'Peau', emoji: '🟠', keywords: [] },
+  peluche: { label: 'Peluche', emoji: '🧸', keywords: [] },
+  plume: { label: 'Plume', emoji: '🪶', keywords: [] },
+  poil: { label: 'Poil', emoji: '🐕', keywords: [] },
+  poudre: { label: 'Poudre', emoji: '🧂', keywords: [] },
+  queue: { label: 'Queue', emoji: '🐀', keywords: [] },
+};
+function guessCategory(name) {
+  const n = name.trim().toLowerCase();
+  for (const key of Object.keys(CATEGORIES)) {
+    if (CATEGORIES[key].keywords.includes(n)) return key;
+  }
+  return null;
+}
+function categoryInfo(key) { return key && CATEGORIES[key] ? CATEGORIES[key] : null; }
+
+// Stockage : utilise window.storage si dispo (dans Claude), sinon localStorage (Chrome direct)
+const hasWidgetStorage = typeof window.storage !== 'undefined';
+async function storageGet(key) {
+  if (hasWidgetStorage) {
+    try { const res = await window.storage.get(key, false); return res ? res.value : null; } catch (e) { return null; }
+  }
+  try { return window.localStorage.getItem(key); } catch (e) { return null; }
+}
+async function storageSet(key, value) {
+  if (hasWidgetStorage) {
+    try { await window.storage.set(key, value, false); return true; } catch (e) { return false; }
+  }
+  try { window.localStorage.setItem(key, value); return true; } catch (e) { return false; }
+}
+
+const IconMarket = ({active}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+const IconCraft = ({active}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 2V8L4 18C3.5 19 4.2 20 5.3 20H18.7C19.8 20 20.5 19 20 18L15 8V2" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 2H15" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round"/><path d="M6.5 14H17.5" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2" strokeLinecap="round"/></svg>);
+const IconPlus = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"/></svg>);
+const IconBack = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18L9 12L15 6" stroke="#7A8194" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+const IconExport = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L8 11M12 15L16 11" stroke="#F2F4F8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V17" stroke="#F2F4F8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+const IconImport = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15V3M12 3L8 7M12 3L16 7" stroke="#F2F4F8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V17" stroke="#F2F4F8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+const IconTrash = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M9 7V4H15V7M6 7L7 20H17L18 7" stroke="#FF6B81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+
+function bucketKey(ts, period) {
+  const d = new Date(ts);
+  if (period === 'heure') return d.toISOString().slice(0, 13);
+  if (period === 'jour') return d.toISOString().slice(0, 10);
+  const day = (d.getDay() + 6) % 7;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - day);
+  return monday.toISOString().slice(0, 10);
+}
+function aggregate(history, period) {
+  const buckets = {};
+  for (const h of history) buckets[bucketKey(h.ts, period)] = h;
+  return Object.entries(buckets).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v]) => ({ bucket:k, price:v.unitPrice }));
+}
+function variation(series) {
+  if (series.length < 2) return { diff:0, pct:0 };
+  const last = series[series.length-1].price, prev = series[series.length-2].price;
+  const diff = last - prev;
+  return { diff, pct: prev!==0 ? (diff/prev)*100 : 0 };
+}
+function latestUnitPrice(item) {
+  if (!item || item.history.length === 0) return null;
+  return item.history[item.history.length-1].unitPrice;
+}
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+}
+function initials(name) { return name.trim().slice(0,2).toUpperCase(); }
+
+function Sparkline({ series }) {
+  if (series.length < 2) return <svg width="48" height="26"><line x1="0" y1="13" x2="48" y2="13" stroke="#252D3D" strokeWidth="1.5" /></svg>;
+  const prices = series.map(s=>s.price), min = Math.min(...prices), max = Math.max(...prices), range = max-min||1;
+  const pts = series.map((s,i) => `${(i/(series.length-1))*46+1},${24-((s.price-min)/range)*22-1}`).join(' ');
+  const { diff } = variation(series);
+  const color = diff>0?'#2DD4A7':diff<0?'#FF6B81':'#7A8194';
+  return <svg width="48" height="26"><polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+function BigChart({ series }) {
+  if (series.length === 0) return <div style={{color:'#7A8194', fontSize:12, textAlign:'center'}}>Pas encore de données</div>;
+  const prices = series.map(s=>s.price), min = Math.min(...prices), max = Math.max(...prices), range = max-min||1;
+  const w=300, h=110, pad=8;
+  const coord = (s,i) => [series.length>1 ? (i/(series.length-1))*(w-pad*2)+pad : w/2, h-pad-((s.price-min)/range)*(h-pad*2)];
+  const pts = series.map((s,i)=>coord(s,i).join(',')).join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h}>
+      <polyline points={pts} fill="none" stroke="#7B6CF0" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      {series.map((s,i)=>{ const [x,y]=coord(s,i); return <circle key={i} cx={x} cy={y} r="3" fill="#7B6CF0" />; })}
+    </svg>
+  );
+}
+
+function useStorage(key) {
+  const [data, setData] = useState(null);
+  useEffect(() => { (async () => {
+    const raw = await storageGet(key);
+    setData(raw ? JSON.parse(raw) : {});
+  })(); }, [key]);
+  async function persist(next) { setData(next); await storageSet(key, JSON.stringify(next)); }
+  return [data, persist];
+}
+
+// ---------- FAÇADE MARCHÉ ----------
+function MarketFacade({ market, setMarket }) {
+  const [activeType, setActiveType] = useState('ressource');
+  const [period, setPeriod] = useState('jour');
+  const [selectedId, setSelectedId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [fName, setFName] = useState(''); const [fType, setFType] = useState('ressource');
+  const [fPack, setFPack] = useState(100); const [fPrice, setFPrice] = useState('');
+  const [fCategory, setFCategory] = useState('auto');
+  const [activeCategory, setActiveCategory] = useState('toutes');
+
+  function addEntry() {
+    if (!fName.trim() || !fPrice) return;
+    const id = fType + ':' + fName.trim().toLowerCase();
+    const next = { ...market };
+    const resolvedCategory = fType === 'ressource' ? (fCategory === 'auto' ? guessCategory(fName) : (fCategory === 'aucune' ? null : fCategory)) : null;
+    const existing = next[id] || { name: fName.trim(), type: fType, category: resolvedCategory, history: [] };
+    existing.category = resolvedCategory;
+    const unitPrice = Number(fPrice) / fPack;
+    existing.history = [...existing.history, { ts: new Date().toISOString(), price:Number(fPrice), packSize:fPack, unitPrice }];
+    next[id] = existing; setMarket(next);
+    setFName(''); setFPrice(''); setFCategory('auto'); setShowForm(false);
+  }
+  function deleteItem(id) { const next = {...market}; delete next[id]; setMarket(next); setSelectedId(null); }
+  function deleteHistoryEntry(id, index) {
+    const next = { ...market }; const item = { ...next[id] };
+    item.history = item.history.filter((_, i) => i !== index);
+    if (item.history.length === 0) { delete next[id]; setSelectedId(null); }
+    else next[id] = item;
+    setMarket(next);
+  }
+
+  const list = useMemo(() => {
+    if (!market) return [];
+    return Object.entries(market)
+      .filter(([id,it]) => it.type===activeType)
+      .filter(([id,it]) => activeCategory==='toutes' || (activeCategory==='aucune' ? !it.category : it.category===activeCategory))
+      .map(([id,it]) => {
+        const series = aggregate(it.history, period); const v = variation(series);
+        return { id, ...it, series, ...v, last: it.history[it.history.length-1] };
+      });
+  }, [market, activeType, activeCategory, period]);
+  const gainers = useMemo(()=>[...list].filter(i=>i.pct>0).sort((a,b)=>b.pct-a.pct).slice(0,3),[list]);
+  const losers = useMemo(()=>[...list].filter(i=>i.pct<0).sort((a,b)=>a.pct-b.pct).slice(0,3),[list]);
+
+  if (market === null) return <div className="empty-state">Chargement...</div>;
+
+  if (selectedId && market[selectedId]) {
+    const it = market[selectedId]; const series = aggregate(it.history, period); const v = variation(series);
+    const last = it.history[it.history.length-1]; const prices = series.map(s=>s.price);
+    return (
+      <div>
+        <div className="back-btn" onClick={()=>setSelectedId(null)}><IconBack/> Marché</div>
+        <div className="detail-head">
+          <div className="detail-title">{it.name}</div>
+          <div className="detail-sub">{it.category ? categoryInfo(it.category).emoji+' '+categoryInfo(it.category).label : (it.type==='ressource'?'Ressource':'Potion')} · {last.price} k les {last.packSize} · vue par {period}</div>
+        </div>
+        <div className="stat-row">
+          <div className="stat"><div className="v" style={{color:v.diff>0?'#2DD4A7':v.diff<0?'#FF6B81':'#F2F4F8'}}>{v.diff>0?'+':''}{v.pct.toFixed(1)}%</div><div className="l">VARIATION</div></div>
+          <div className="stat"><div className="v">{prices.length?Math.min(...prices).toFixed(1):'—'}</div><div className="l">MIN /U</div></div>
+          <div className="stat"><div className="v">{prices.length?Math.max(...prices).toFixed(1):'—'}</div><div className="l">MAX /U</div></div>
+        </div>
+        <div className="chart-card"><BigChart series={series} /></div>
+        <div className="section-title">Relevés enregistrés</div>
+        <div className="history-list">
+          {it.history.slice().reverse().map((h, revIdx) => {
+            const idx = it.history.length - 1 - revIdx;
+            return (
+              <div className="history-row" key={idx}>
+                <span className="history-date">{fmtDate(h.ts)}</span>
+                <span>{h.price} k / {h.packSize}</span>
+                <span onClick={()=>deleteHistoryEntry(selectedId, idx)} style={{cursor:'pointer'}}><IconTrash/></span>
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn-ghost" onClick={()=>deleteItem(selectedId)}>Supprimer cette ressource du marché</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="pill-tabs">
+        <div className={"pill-tab"+(activeType==='ressource'?' active':'')} onClick={()=>setActiveType('ressource')}>Ressources</div>
+        <div className={"pill-tab"+(activeType==='potion'?' active':'')} onClick={()=>setActiveType('potion')}>Potions</div>
+      </div>
+      {activeType==='ressource' && (
+        <div className="rank-scroll" style={{padding:'12px 20px 0'}}>
+          <div className={"period-pill"} style={{background:activeCategory==='toutes'?'var(--accent)':'transparent', color:activeCategory==='toutes'?'#fff':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'7px 14px'}} onClick={()=>setActiveCategory('toutes')}>Toutes</div>
+          {Object.entries(CATEGORIES).map(([key,c]) => (
+            <div key={key} className={"period-pill"} style={{background:activeCategory===key?'var(--accent)':'transparent', color:activeCategory===key?'#fff':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'7px 14px'}} onClick={()=>setActiveCategory(key)}>{c.emoji} {c.label}</div>
+          ))}
+        </div>
+      )}
+      <div className="period-row">
+        {['heure','jour','semaine'].map(p => <div key={p} className={"period-pill"+(period===p?' active':'')} onClick={()=>setPeriod(p)}>{p[0].toUpperCase()+p.slice(1)}</div>)}
+      </div>
+      {(gainers.length>0 || losers.length>0) && (
+        <>
+          <div className="section-title">Opportunités <span>· {period}</span></div>
+          <div className="rank-scroll">
+            <div className="rank-card"><div className="k">HAUSSES</div>
+              {gainers.length===0 && <div className="rank-empty">Rien à signaler</div>}
+              {gainers.map(g => <div className="rank-item" key={g.id} onClick={()=>setSelectedId(g.id)}><span>{g.name}</span><span className="badge up">+{g.pct.toFixed(0)}%</span></div>)}
+            </div>
+            <div className="rank-card"><div className="k">BAISSES</div>
+              {losers.length===0 && <div className="rank-empty">Rien à signaler</div>}
+              {losers.map(g => <div className="rank-item" key={g.id} onClick={()=>setSelectedId(g.id)}><span>{g.name}</span><span className="badge down">{g.pct.toFixed(0)}%</span></div>)}
+            </div>
+          </div>
+        </>
+      )}
+      <div className="section-title">Registre</div>
+      <div className="card-list">
+        {list.length===0 && <div className="empty-state">Aucune entrée. Touche le bouton + pour ajouter un prix.</div>}
+        {list.map(it => (
+          <div className="item-card" key={it.id} onClick={()=>setSelectedId(it.id)}>
+            <div className="avatar" style={{fontSize: it.category ? 18 : 14}}>{it.category ? categoryInfo(it.category).emoji : initials(it.name)}</div>
+            <div className="item-info"><div className="item-name">{it.name}</div><div className="item-meta">{it.category ? categoryInfo(it.category).label+' · ' : ''}{it.last.price} k / {it.last.packSize}</div></div>
+            <div className="item-spark"><Sparkline series={it.series} /></div>
+            <div className="item-trailing">
+              <div className="item-price">{it.last.unitPrice.toFixed(1)} k</div>
+              <span className={"badge "+(it.diff>0?'up':it.diff<0?'down':'flat')}>{it.series.length<2?'—':(it.diff>0?`+${it.pct.toFixed(1)}%`:it.diff<0?`${it.pct.toFixed(1)}%`:'stable')}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="fab" onClick={()=>{setShowForm(!showForm); setFType(activeType);}}><IconPlus/></div>
+
+      {showForm && (
+        <div className="sheet">
+          <label>Type</label>
+          <div className="seg"><div className={fType==='ressource'?'sel':''} onClick={()=>setFType('ressource')}>Ressource</div><div className={fType==='potion'?'sel':''} onClick={()=>setFType('potion')}>Potion</div></div>
+          <label>Nom</label>
+          <input placeholder="ex: Blé" value={fName} onChange={e=>{setFName(e.target.value);}} />
+          {fType==='ressource' && (
+            <>
+              <label>Catégorie</label>
+              <select value={fCategory} onChange={e=>setFCategory(e.target.value)}>
+                <option value="auto">Détection automatique{fName && guessCategory(fName) ? ` (${categoryInfo(guessCategory(fName)).label})` : ''}</option>
+                {Object.entries(CATEGORIES).map(([key,c]) => <option key={key} value={key}>{c.emoji} {c.label}</option>)}
+                <option value="aucune">Aucune catégorie</option>
+              </select>
+            </>
+          )}
+          <label>Vendu par lot de</label>
+          <div className="seg">{PACK_SIZES.map(p => <div key={p} className={fPack===p?'sel':''} onClick={()=>setFPack(p)}>{p}</div>)}</div>
+          <label>Prix relevé pour ce lot (kamas)</label>
+          <input type="number" placeholder="ex: 1000" value={fPrice} onChange={e=>setFPrice(e.target.value)} />
+          <button className="btn-primary" onClick={addEntry}>Enregistrer</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- FAÇADE ATELIER ----------
+function CraftFacade({ market, crafts, setCrafts }) {
+  const [selectedId, setSelectedId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [fName, setFName] = useState('');
+  const [newIngId, setNewIngId] = useState(''); const [newIngQty, setNewIngQty] = useState('');
+  const [draftIngredients, setDraftIngredients] = useState([]);
+  const [sellPriceInput, setSellPriceInput] = useState('');
+
+  const marketList = useMemo(() => market ? Object.entries(market).map(([id,it])=>({id,...it})) : [], [market]);
+
+  function addIngredientToDraft() {
+    if (!newIngId || !newIngQty) return;
+    const item = marketList.find(m=>m.id===newIngId); if (!item) return;
+    setDraftIngredients([...draftIngredients, { itemId:newIngId, name:item.name, qty:Number(newIngQty) }]);
+    setNewIngId(''); setNewIngQty('');
+  }
+  function removeDraftIngredient(i) { setDraftIngredients(draftIngredients.filter((_,idx)=>idx!==i)); }
+  function saveCraft() {
+    if (!fName.trim() || draftIngredients.length===0) return;
+    const id = 'craft:' + fName.trim().toLowerCase();
+    const next = { ...crafts, [id]: { name:fName.trim(), ingredients:draftIngredients, sellHistory:(crafts[id]?.sellHistory||[]) } };
+    setCrafts(next); setFName(''); setDraftIngredients([]); setShowForm(false);
+  }
+  function deleteCraft(id) { const next = {...crafts}; delete next[id]; setCrafts(next); setSelectedId(null); }
+  function recordSellPrice(id) {
+    if (!sellPriceInput) return;
+    const next = { ...crafts }; const c = { ...next[id] };
+    c.sellHistory = [...c.sellHistory, { ts:new Date().toISOString(), price:Number(sellPriceInput) }];
+    next[id] = c; setCrafts(next); setSellPriceInput('');
+  }
+  function deleteSellEntry(id, index) {
+    const next = { ...crafts }; const c = { ...next[id] };
+    c.sellHistory = c.sellHistory.filter((_,i)=>i!==index);
+    next[id] = c; setCrafts(next);
+  }
+
+  if (crafts === null || market === null) return <div className="empty-state">Chargement...</div>;
+
+  if (selectedId && crafts[selectedId]) {
+    const c = crafts[selectedId];
+    const breakdown = c.ingredients.map(ing => {
+      const item = market[ing.itemId]; const unitPrice = latestUnitPrice(item);
+      return { ...ing, unitPrice, subtotal: unitPrice!=null ? unitPrice*ing.qty : null, missing: unitPrice==null };
+    });
+    const missingAny = breakdown.some(b=>b.missing);
+    const craftCost = breakdown.reduce((sum,b)=>sum+(b.subtotal||0),0);
+    const lastSell = c.sellHistory[c.sellHistory.length-1];
+    const sellPrice = sellPriceInput ? Number(sellPriceInput) : (lastSell ? lastSell.price : null);
+    const commission = sellPrice!=null ? sellPrice*COMMISSION : null;
+    const netRevenue = sellPrice!=null ? sellPrice-commission : null;
+    const margin = netRevenue!=null ? netRevenue-craftCost : null;
+
+    return (
+      <div>
+        <div className="back-btn" onClick={()=>setSelectedId(null)}><IconBack/> Atelier</div>
+        <div className="detail-head">
+          <div className="detail-title">{c.name}</div>
+          <div className="detail-sub">{c.ingredients.length} ingrédient{c.ingredients.length>1?'s':''}</div>
+        </div>
+
+        <div className="section-title">Coût de fabrication</div>
+        <div className="ing-list">
+          {breakdown.map((b,i) => (
+            <div className="ing-row" key={i}><div>{b.name}<span className="qty-tag">×{b.qty}</span></div><div>{b.missing ? <span className="warn-text">non renseigné</span> : `${b.subtotal.toFixed(1)} k`}</div></div>
+          ))}
+          <div className="ing-row total"><div>Coût total</div><div>{craftCost.toFixed(1)} k</div></div>
+        </div>
+        {missingAny && <div className="warn-text" style={{padding:'8px 20px'}}>Ajoute d'abord les ingrédients manquants dans le Marché.</div>}
+
+        <div className="section-title">Prix de vente HDV actuel</div>
+        <div className="sheet" style={{marginTop:0}}>
+          <input type="number" placeholder={lastSell ? `dernier : ${lastSell.price} k` : 'ex: 2500'} value={sellPriceInput} onChange={e=>setSellPriceInput(e.target.value)} />
+          <button className="btn-primary" onClick={()=>recordSellPrice(selectedId)}>Enregistrer ce prix</button>
+        </div>
+
+        {sellPrice != null && (
+          <>
+            <div className="section-title">Analyse de marge</div>
+            <div className="margin-card">
+              <div className="margin-row"><span>Prix de vente HDV</span><span>{sellPrice.toFixed(1)} k</span></div>
+              <div className="margin-row"><span>Commission (3%)</span><span>− {commission.toFixed(1)} k</span></div>
+              <div className="margin-row"><span>Revenu net</span><span>{netRevenue.toFixed(1)} k</span></div>
+              <div className="margin-row"><span>Coût du craft</span><span>− {craftCost.toFixed(1)} k</span></div>
+              <div className="margin-row result"><span>{margin>=0?'Bénéfice':'Perte'}</span><span style={{color:margin>=0?'var(--gain)':'var(--loss)'}}>{margin>=0?'+':''}{margin.toFixed(1)} k</span></div>
+            </div>
+          </>
+        )}
+
+        {c.sellHistory.length > 0 && (
+          <>
+            <div className="section-title">Historique des ventes</div>
+            {c.sellHistory.length > 1 && <div className="chart-card"><BigChart series={c.sellHistory.map(h=>({price:h.price}))} /></div>}
+            <div className="history-list">
+              {c.sellHistory.slice().reverse().map((h, revIdx) => {
+                const idx = c.sellHistory.length - 1 - revIdx;
+                return (
+                  <div className="history-row" key={idx}>
+                    <span className="history-date">{fmtDate(h.ts)}</span>
+                    <span>{h.price} k</span>
+                    <span onClick={()=>deleteSellEntry(selectedId, idx)} style={{cursor:'pointer'}}><IconTrash/></span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <button className="btn-ghost" onClick={()=>deleteCraft(selectedId)}>Supprimer cette recette</button>
+      </div>
+    );
+  }
+
+  const craftList = Object.entries(crafts).map(([id,c]) => {
+    const cost = c.ingredients.reduce((sum,ing) => { const up = latestUnitPrice(market[ing.itemId]); return sum + (up!=null ? up*ing.qty : 0); }, 0);
+    const missing = c.ingredients.some(ing => latestUnitPrice(market[ing.itemId]) == null);
+    const last = c.sellHistory[c.sellHistory.length-1];
+    let margin = null; if (last) margin = (last.price - last.price*COMMISSION) - cost;
+    return { id, ...c, cost, missing, last, margin };
+  });
+
+  return (
+    <div>
+      <div className="section-title">Tes recettes</div>
+      <div className="card-list">
+        {craftList.length===0 && <div className="empty-state">Aucune recette. Touche + pour en créer une.</div>}
+        {craftList.map(c => (
+          <div className="item-card" key={c.id} onClick={()=>setSelectedId(c.id)}>
+            <div className="avatar">{initials(c.name)}</div>
+            <div className="item-info"><div className="item-name">{c.name}</div><div className="item-meta">coût : {c.missing?'—':c.cost.toFixed(1)+' k'}</div></div>
+            <div className="item-trailing">
+              {c.margin != null ? <span className={"badge "+(c.margin>=0?'up':'down')}>{c.margin>=0?'+':''}{c.margin.toFixed(0)} k</span> : <span className="item-meta">pas de vente</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="fab" onClick={()=>setShowForm(!showForm)}><IconPlus/></div>
+
+      {showForm && (
+        <div className="sheet">
+          <label>Nom de l'objet à crafter</label>
+          <input placeholder="ex: Potion Magique" value={fName} onChange={e=>setFName(e.target.value)} />
+          <label>Ingrédients</label>
+          {draftIngredients.map((ing,i) => (
+            <div className="ing-row" key={i}><div>{ing.name}<span className="qty-tag">×{ing.qty}</span></div><span className="remove-x" onClick={()=>removeDraftIngredient(i)}>retirer</span></div>
+          ))}
+          <div className="add-ing-row">
+            <select value={newIngId} onChange={e=>setNewIngId(e.target.value)}>
+              <option value="">Choisir...</option>
+              {marketList.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <input type="number" placeholder="qté" value={newIngQty} onChange={e=>setNewIngQty(e.target.value)} />
+            <button className="add-ing-btn" onClick={addIngredientToDraft}>+</button>
+          </div>
+          {marketList.length===0 && <div className="warn-text">Ajoute d'abord des ressources dans le Marché.</div>}
+          <button className="btn-primary" onClick={saveCraft}>Enregistrer la recette</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [market, setMarket] = useStorage(MARKET_KEY);
+  const [crafts, setCrafts] = useStorage(CRAFT_KEY);
+  const [facade, setFacade] = useState('market');
+  const [toast, setToast] = useState(null);
+  const fileInputRef = useRef(null);
+
+  function showToast(msg) { setToast(msg); setTimeout(()=>setToast(null), 2200); }
+
+  function exportData() {
+    const payload = { exportedAt: new Date().toISOString(), market: market || {}, crafts: crafts || {} };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url; a.download = `kamas-stat-sauvegarde-${stamp}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Sauvegarde téléchargée — dépose-la dans ton Drive');
+  }
+
+  function triggerImport() { fileInputRef.current && fileInputRef.current.click(); }
+
+  function handleImportFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        const importedMarket = parsed.market || {};
+        const importedCrafts = parsed.crafts || {};
+        await setMarket(importedMarket);
+        await setCrafts(importedCrafts);
+        showToast('Données importées avec succès');
+      } catch (err) {
+        showToast('Fichier invalide, import annulé');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  return (
+    <div className="app">
+      {toast && <div className="toast">{toast}</div>}
+      <div className="topbar">
+        <h1>Kamas Stat</h1>
+        <div className="chip">Tiliwan</div>
+        <div className="icon-btn" onClick={exportData} title="Exporter la sauvegarde"><IconExport/></div>
+        <div className="icon-btn" onClick={triggerImport} title="Importer une sauvegarde"><IconImport/></div>
+        <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={handleImportFile} />
+      </div>
+      {facade === 'market' ? <MarketFacade market={market} setMarket={setMarket} /> : <CraftFacade market={market} crafts={crafts} setCrafts={setCrafts} />}
+      <div className="bottom-nav">
+        <div className={"nav-btn"+(facade==='market'?' active':'')} onClick={()=>setFacade('market')}><IconMarket active={facade==='market'}/><div className="nav-label">Marché</div></div>
+        <div className={"nav-btn"+(facade==='craft'?' active':'')} onClick={()=>setFacade('craft')}><IconCraft active={facade==='craft'}/><div className="nav-label">Atelier</div></div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>
