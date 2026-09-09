@@ -131,51 +131,70 @@ const { useState, useEffect, useMemo, useRef } = React;
 
 const MARKET_KEY = 'kamasstat-market-v1';
 const CRAFT_KEY = 'kamasstat-crafts-v1';
+const BANK_KEY = 'kamasstat-bank-v1';
 const COMMISSION = 0.03;
 const PACK_SIZES = [1, 10, 100, 1000];
 
-// Catégories de ressources : celles liées à tes métiers (avec détection auto) + les catégories générales du jeu
-const CATEGORIES = {
+// Catégories : 3 catégories principales + "Ressource" qui contient des sous-catégories
+const TOP_CATEGORIES = {
   cereales: { label: 'Céréales', emoji: '🌾', keywords: ['avoine','houblon','seigle','malt','frostiz','orge','riz','blé','ble'] },
   plante: { label: 'Plante', emoji: '🌿', keywords: ['perce-neige','perceneige','edelweiss','trèfle à 5 feuilles','trefle a 5 feuilles','lin','pandouille','orchidée freyesque','orchidee freyesque','chanvre','menthe sauvage'] },
-  aile: { label: 'Aile', emoji: '🪽', keywords: [] },
-  badge: { label: 'Badge', emoji: '🎖️', keywords: [] },
-  biere: { label: 'Bière', emoji: '🍺', keywords: [] },
-  boisson: { label: 'Boisson', emoji: '🥤', keywords: [] },
-  carapace: { label: 'Carapace', emoji: '🐢', keywords: [] },
-  champignon: { label: 'Champignon', emoji: '🍄', keywords: [] },
-  coquille: { label: 'Coquille', emoji: '🐚', keywords: [] },
-  cuir: { label: 'Cuir', emoji: '🟤', keywords: [] },
-  emballage: { label: 'Emballage', emoji: '📦', keywords: [] },
-  essence: { label: 'Essence de gardien de donjon', emoji: '✨', keywords: [] },
-  etoffe: { label: 'Étoffe', emoji: '🧵', keywords: [] },
-  fleur: { label: 'Fleur', emoji: '🌸', keywords: [] },
-  fruit: { label: 'Fruit', emoji: '🍎', keywords: [] },
-  gelee: { label: 'Gelée', emoji: '🟢', keywords: [] },
-  graine: { label: 'Graine', emoji: '🌰', keywords: [] },
-  laine: { label: 'Laine', emoji: '🧶', keywords: [] },
-  legume: { label: 'Légume', emoji: '🥕', keywords: [] },
-  nowel: { label: 'Nowel', emoji: '🎄', keywords: [] },
-  oeil: { label: 'Œil', emoji: '👁️', keywords: [] },
-  oeuf: { label: 'Œuf', emoji: '🥚', keywords: [] },
-  oreille: { label: 'Oreille', emoji: '👂', keywords: [] },
-  os: { label: 'Os', emoji: '🦴', keywords: [] },
-  patte: { label: 'Patte', emoji: '🐾', keywords: [] },
-  peau: { label: 'Peau', emoji: '🟠', keywords: [] },
-  peluche: { label: 'Peluche', emoji: '🧸', keywords: [] },
-  plume: { label: 'Plume', emoji: '🪶', keywords: [] },
-  poil: { label: 'Poil', emoji: '🐕', keywords: [] },
-  poudre: { label: 'Poudre', emoji: '🧂', keywords: [] },
-  queue: { label: 'Queue', emoji: '🐀', keywords: [] },
+  ressource: { label: 'Ressource', emoji: '📦' },
+  ressource_divers: { label: 'Ressource divers', emoji: '🗂️', keywords: [] },
 };
+const RESSOURCE_SUBCATEGORIES = {
+  aile: { label: 'Aile', emoji: '🪽' },
+  badge: { label: 'Badge', emoji: '🎖️' },
+  biere: { label: 'Bière', emoji: '🍺' },
+  boisson: { label: 'Boisson', emoji: '🥤' },
+  carapace: { label: 'Carapace', emoji: '🐢' },
+  champignon: { label: 'Champignon', emoji: '🍄' },
+  coquille: { label: 'Coquille', emoji: '🐚' },
+  cuir: { label: 'Cuir', emoji: '🟤' },
+  emballage: { label: 'Emballage', emoji: '📦' },
+  essence: { label: 'Essence de gardien de donjon', emoji: '✨' },
+  etoffe: { label: 'Étoffe', emoji: '🧵' },
+  fleur: { label: 'Fleur', emoji: '🌸' },
+  fruit: { label: 'Fruit', emoji: '🍎' },
+  gelee: { label: 'Gelée', emoji: '🟢' },
+  graine: { label: 'Graine', emoji: '🌰' },
+  laine: { label: 'Laine', emoji: '🧶' },
+  legume: { label: 'Légume', emoji: '🥕' },
+  nowel: { label: 'Nowel', emoji: '🎄' },
+  oeil: { label: 'Œil', emoji: '👁️' },
+  oeuf: { label: 'Œuf', emoji: '🥚' },
+  oreille: { label: 'Oreille', emoji: '👂' },
+  os: { label: 'Os', emoji: '🦴' },
+  patte: { label: 'Patte', emoji: '🐾' },
+  peau: { label: 'Peau', emoji: '🟠' },
+  peluche: { label: 'Peluche', emoji: '🧸' },
+  plume: { label: 'Plume', emoji: '🪶' },
+  poil: { label: 'Poil', emoji: '🐕' },
+  poudre: { label: 'Poudre', emoji: '🧂' },
+  queue: { label: 'Queue', emoji: '🐀' },
+  rune_forgemagie: { label: 'Rune de forgemagie', emoji: '🔮' },
+};
+// Un item stocke soit une catégorie simple ('cereales', 'plante', 'ressource_divers'),
+// soit une sous-catégorie de Ressource sous la forme 'ressource:aile'
 function guessCategory(name) {
   const n = name.trim().toLowerCase();
-  for (const key of Object.keys(CATEGORIES)) {
-    if (CATEGORIES[key].keywords.includes(n)) return key;
+  for (const key of Object.keys(TOP_CATEGORIES)) {
+    if (TOP_CATEGORIES[key].keywords && TOP_CATEGORIES[key].keywords.includes(n)) return key;
   }
   return null;
 }
-function categoryInfo(key) { return key && CATEGORIES[key] ? CATEGORIES[key] : null; }
+function categoryInfo(key) {
+  if (!key) return null;
+  if (key.startsWith('ressource:')) {
+    const sub = key.slice('ressource:'.length);
+    return RESSOURCE_SUBCATEGORIES[sub] || null;
+  }
+  return TOP_CATEGORIES[key] || null;
+}
+function categoryTopKey(key) {
+  if (!key) return null;
+  return key.startsWith('ressource:') ? 'ressource' : key;
+}
 
 // Stockage : utilise window.storage si dispo (dans Claude), sinon localStorage (Chrome direct)
 const hasWidgetStorage = typeof window.storage !== 'undefined';
@@ -194,6 +213,7 @@ async function storageSet(key, value) {
 
 const IconMarket = ({active}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
 const IconCraft = ({active}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 2V8L4 18C3.5 19 4.2 20 5.3 20H18.7C19.8 20 20.5 19 20 18L15 8V2" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 2H15" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round"/><path d="M6.5 14H17.5" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2" strokeLinecap="round"/></svg>);
+const IconBank = ({active}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10L12 4L21 10" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 10V19M9 10V19M15 10V19M20 10V19" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round"/><path d="M3 19H21" stroke={active?'#7B6CF0':'#7A8194'} strokeWidth="2.2" strokeLinecap="round"/></svg>);
 const IconPlus = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"/></svg>);
 const IconBack = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18L9 12L15 6" stroke="#7A8194" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/></svg>);
 const IconExport = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L8 11M12 15L16 11" stroke="#F2F4F8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V17" stroke="#F2F4F8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
@@ -271,19 +291,27 @@ function MarketFacade({ market, setMarket }) {
   const [fName, setFName] = useState(''); const [fType, setFType] = useState('ressource');
   const [fPack, setFPack] = useState(100); const [fPrice, setFPrice] = useState('');
   const [fCategory, setFCategory] = useState('auto');
+  const [fSubCategory, setFSubCategory] = useState('');
   const [activeCategory, setActiveCategory] = useState('toutes');
+  const [activeSubCategory, setActiveSubCategory] = useState('toutes');
 
   function addEntry() {
     if (!fName.trim() || !fPrice) return;
     const id = fType + ':' + fName.trim().toLowerCase();
     const next = { ...market };
-    const resolvedCategory = fType === 'ressource' ? (fCategory === 'auto' ? guessCategory(fName) : (fCategory === 'aucune' ? null : fCategory)) : null;
+    let resolvedCategory = null;
+    if (fType === 'ressource') {
+      if (fCategory === 'auto') resolvedCategory = guessCategory(fName);
+      else if (fCategory === 'aucune') resolvedCategory = null;
+      else if (fCategory === 'ressource') resolvedCategory = fSubCategory ? ('ressource:' + fSubCategory) : null;
+      else resolvedCategory = fCategory;
+    }
     const existing = next[id] || { name: fName.trim(), type: fType, category: resolvedCategory, history: [] };
     existing.category = resolvedCategory;
     const unitPrice = Number(fPrice) / fPack;
     existing.history = [...existing.history, { ts: new Date().toISOString(), price:Number(fPrice), packSize:fPack, unitPrice }];
     next[id] = existing; setMarket(next);
-    setFName(''); setFPrice(''); setFCategory('auto'); setShowForm(false);
+    setFName(''); setFPrice(''); setFCategory('auto'); setFSubCategory(''); setShowForm(false);
   }
   function deleteItem(id) { const next = {...market}; delete next[id]; setMarket(next); setSelectedId(null); }
   function deleteHistoryEntry(id, index) {
@@ -298,12 +326,19 @@ function MarketFacade({ market, setMarket }) {
     if (!market) return [];
     return Object.entries(market)
       .filter(([id,it]) => it.type===activeType)
-      .filter(([id,it]) => activeCategory==='toutes' || (activeCategory==='aucune' ? !it.category : it.category===activeCategory))
+      .filter(([id,it]) => {
+        if (activeCategory==='toutes') return true;
+        if (activeCategory==='aucune') return !it.category;
+        const top = categoryTopKey(it.category);
+        if (top !== activeCategory) return false;
+        if (activeCategory==='ressource' && activeSubCategory!=='toutes') return it.category === 'ressource:'+activeSubCategory;
+        return true;
+      })
       .map(([id,it]) => {
         const series = aggregate(it.history, period); const v = variation(series);
         return { id, ...it, series, ...v, last: it.history[it.history.length-1] };
       });
-  }, [market, activeType, activeCategory, period]);
+  }, [market, activeType, activeCategory, activeSubCategory, period]);
   const gainers = useMemo(()=>[...list].filter(i=>i.pct>0).sort((a,b)=>b.pct-a.pct).slice(0,3),[list]);
   const losers = useMemo(()=>[...list].filter(i=>i.pct<0).sort((a,b)=>a.pct-b.pct).slice(0,3),[list]);
 
@@ -350,12 +385,22 @@ function MarketFacade({ market, setMarket }) {
         <div className={"pill-tab"+(activeType==='potion'?' active':'')} onClick={()=>setActiveType('potion')}>Potions</div>
       </div>
       {activeType==='ressource' && (
-        <div className="rank-scroll" style={{padding:'12px 20px 0'}}>
-          <div className={"period-pill"} style={{background:activeCategory==='toutes'?'var(--accent)':'transparent', color:activeCategory==='toutes'?'#fff':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'7px 14px'}} onClick={()=>setActiveCategory('toutes')}>Toutes</div>
-          {Object.entries(CATEGORIES).map(([key,c]) => (
-            <div key={key} className={"period-pill"} style={{background:activeCategory===key?'var(--accent)':'transparent', color:activeCategory===key?'#fff':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'7px 14px'}} onClick={()=>setActiveCategory(key)}>{c.emoji} {c.label}</div>
-          ))}
-        </div>
+        <>
+          <div className="rank-scroll" style={{padding:'12px 20px 0'}}>
+            <div className={"period-pill"} style={{background:activeCategory==='toutes'?'var(--accent)':'transparent', color:activeCategory==='toutes'?'#fff':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'7px 14px'}} onClick={()=>{setActiveCategory('toutes'); setActiveSubCategory('toutes');}}>Toutes</div>
+            {Object.entries(TOP_CATEGORIES).map(([key,c]) => (
+              <div key={key} className={"period-pill"} style={{background:activeCategory===key?'var(--accent)':'transparent', color:activeCategory===key?'#fff':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'7px 14px'}} onClick={()=>{setActiveCategory(key); setActiveSubCategory('toutes');}}>{c.emoji} {c.label}</div>
+            ))}
+          </div>
+          {activeCategory==='ressource' && (
+            <div className="rank-scroll" style={{padding:'8px 20px 0'}}>
+              <div className={"period-pill"} style={{background:activeSubCategory==='toutes'?'var(--accent-soft)':'transparent', color:activeSubCategory==='toutes'?'var(--accent)':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'6px 12px', fontSize:11.5}} onClick={()=>setActiveSubCategory('toutes')}>Toutes</div>
+              {Object.entries(RESSOURCE_SUBCATEGORIES).map(([key,c]) => (
+                <div key={key} className={"period-pill"} style={{background:activeSubCategory===key?'var(--accent-soft)':'transparent', color:activeSubCategory===key?'var(--accent)':'var(--muted)', borderColor:'var(--border)', whiteSpace:'nowrap', flex:'0 0 auto', padding:'6px 12px', fontSize:11.5}} onClick={()=>setActiveSubCategory(key)}>{c.emoji} {c.label}</div>
+              ))}
+            </div>
+          )}
+        </>
       )}
       <div className="period-row">
         {['heure','jour','semaine'].map(p => <div key={p} className={"period-pill"+(period===p?' active':'')} onClick={()=>setPeriod(p)}>{p[0].toUpperCase()+p.slice(1)}</div>)}
@@ -402,11 +447,23 @@ function MarketFacade({ market, setMarket }) {
           {fType==='ressource' && (
             <>
               <label>Catégorie</label>
-              <select value={fCategory} onChange={e=>setFCategory(e.target.value)}>
+              <select value={fCategory} onChange={e=>{setFCategory(e.target.value); setFSubCategory('');}}>
                 <option value="auto">Détection automatique{fName && guessCategory(fName) ? ` (${categoryInfo(guessCategory(fName)).label})` : ''}</option>
-                {Object.entries(CATEGORIES).map(([key,c]) => <option key={key} value={key}>{c.emoji} {c.label}</option>)}
+                <option value="cereales">🌾 Céréales</option>
+                <option value="plante">🌿 Plante</option>
+                <option value="ressource">📦 Ressource...</option>
+                <option value="ressource_divers">🗂️ Ressource divers</option>
                 <option value="aucune">Aucune catégorie</option>
               </select>
+              {fCategory === 'ressource' && (
+                <>
+                  <label>Sous-catégorie</label>
+                  <select value={fSubCategory} onChange={e=>setFSubCategory(e.target.value)}>
+                    <option value="">Choisir...</option>
+                    {Object.entries(RESSOURCE_SUBCATEGORIES).map(([key,c]) => <option key={key} value={key}>{c.emoji} {c.label}</option>)}
+                  </select>
+                </>
+              )}
             </>
           )}
           <label>Vendu par lot de</label>
@@ -583,9 +640,177 @@ function CraftFacade({ market, crafts, setCrafts }) {
   );
 }
 
+// ---------- FAÇADE BANQUE ----------
+function BankFacade({ market, bank, setBank }) {
+  const [tab, setTab] = useState('solde');
+  const [selectedHoldingId, setSelectedHoldingId] = useState(null);
+  const [showBalanceForm, setShowBalanceForm] = useState(false);
+  const [balanceInput, setBalanceInput] = useState('');
+  const [showLotForm, setShowLotForm] = useState(false);
+  const [lotItemId, setLotItemId] = useState('');
+  const [lotQty, setLotQty] = useState('');
+  const [lotPrice, setLotPrice] = useState('');
+
+  const balanceHistory = (bank && bank.balanceHistory) || [];
+  const holdings = (bank && bank.holdings) || {};
+  const marketList = useMemo(() => market ? Object.entries(market).map(([id,it])=>({id,...it})) : [], [market]);
+
+  function addBalance() {
+    if (!balanceInput) return;
+    setBank({ balanceHistory: [...balanceHistory, { ts: new Date().toISOString(), amount: Number(balanceInput) }], holdings });
+    setBalanceInput(''); setShowBalanceForm(false);
+  }
+  function deleteBalance(index) {
+    setBank({ holdings, balanceHistory: balanceHistory.filter((_,i)=>i!==index) });
+  }
+  function addLot() {
+    if (!lotItemId || !lotQty || !lotPrice) return;
+    const item = marketList.find(m=>m.id===lotItemId); if (!item) return;
+    const nextHoldings = { ...holdings };
+    const existing = nextHoldings[lotItemId] || { name: item.name, lots: [] };
+    existing.lots = [...existing.lots, { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), ts: new Date().toISOString(), qty: Number(lotQty), unitPrice: Number(lotPrice) }];
+    nextHoldings[lotItemId] = existing;
+    setBank({ balanceHistory, holdings: nextHoldings });
+    setLotItemId(''); setLotQty(''); setLotPrice(''); setShowLotForm(false);
+  }
+  function deleteLot(itemId, lotId) {
+    const nextHoldings = { ...holdings };
+    const h = { ...nextHoldings[itemId] };
+    h.lots = h.lots.filter(l => l.id !== lotId);
+    if (h.lots.length === 0) { delete nextHoldings[itemId]; setSelectedHoldingId(null); }
+    else nextHoldings[itemId] = h;
+    setBank({ balanceHistory, holdings: nextHoldings });
+  }
+
+  const holdingsList = useMemo(() => Object.entries(holdings).map(([id, h]) => {
+    const totalQty = h.lots.reduce((s,l)=>s+l.qty,0);
+    const totalCost = h.lots.reduce((s,l)=>s+l.qty*l.unitPrice,0);
+    const avgCost = totalQty > 0 ? totalCost/totalQty : 0;
+    const breakeven = avgCost / (1 - COMMISSION);
+    const currentPrice = market ? latestUnitPrice(market[id]) : null;
+    return { id, ...h, totalQty, totalCost, avgCost, breakeven, currentPrice };
+  }), [holdings, market]);
+
+  if (bank === null || market === null) return <div className="empty-state">Chargement...</div>;
+
+  const latestBalance = balanceHistory[balanceHistory.length-1];
+
+  if (selectedHoldingId && holdings[selectedHoldingId]) {
+    const h = holdingsList.find(x=>x.id===selectedHoldingId);
+    return (
+      <div>
+        <div className="back-btn" onClick={()=>setSelectedHoldingId(null)}><IconBack/> Banque</div>
+        <div className="detail-head">
+          <div className="detail-title">{h.name}</div>
+          <div className="detail-sub">{h.totalQty} unité{h.totalQty>1?'s':''} en stock</div>
+        </div>
+        <div className="stat-row">
+          <div className="stat"><div className="v">{h.avgCost.toFixed(1)}</div><div className="l">COÛT MOYEN</div></div>
+          <div className="stat"><div className="v">{h.breakeven.toFixed(1)}</div><div className="l">SEUIL MINI</div></div>
+          <div className="stat"><div className="v" style={{color: h.currentPrice!=null ? (h.currentPrice>=h.breakeven?'var(--gain)':'var(--loss)') : undefined}}>{h.currentPrice!=null ? h.currentPrice.toFixed(1) : '—'}</div><div className="l">PRIX MARCHÉ</div></div>
+        </div>
+        {h.currentPrice != null && (
+          <div className="margin-card" style={{margin:'14px 20px 0'}}>
+            <div className="margin-row result"><span>{h.currentPrice >= h.breakeven ? 'Bon moment pour vendre' : 'Encore en dessous du seuil'}</span><span style={{color: h.currentPrice>=h.breakeven?'var(--gain)':'var(--loss)'}}>{h.currentPrice>=h.breakeven?'+':''}{(h.currentPrice-h.breakeven).toFixed(1)} k</span></div>
+          </div>
+        )}
+        <div className="section-title">Achats enregistrés</div>
+        <div className="history-list">
+          {h.lots.slice().reverse().map(l => (
+            <div className="history-row" key={l.id}>
+              <span className="history-date">{fmtDate(l.ts)}</span>
+              <span>{l.qty} × {l.unitPrice} k</span>
+              <span onClick={()=>deleteLot(selectedHoldingId, l.id)} style={{cursor:'pointer'}}><IconTrash/></span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="pill-tabs">
+        <div className={"pill-tab"+(tab==='solde'?' active':'')} onClick={()=>setTab('solde')}>Solde</div>
+        <div className={"pill-tab"+(tab==='stock'?' active':'')} onClick={()=>setTab('stock')}>Stock</div>
+      </div>
+
+      {tab === 'solde' && (
+        <div>
+          <div className="stat-row" style={{padding:'16px 20px 0'}}>
+            <div className="stat" style={{flex:1}}>
+              <div className="v" style={{fontSize:22}}>{latestBalance ? latestBalance.amount.toLocaleString('fr-FR') : '—'} k</div>
+              <div className="l">SOLDE ACTUEL</div>
+            </div>
+          </div>
+          {balanceHistory.length > 1 && <div className="chart-card"><BigChart series={balanceHistory.map(b=>({price:b.amount}))} /></div>}
+          <div className="section-title">Historique du solde</div>
+          <div className="history-list" style={{margin:'0 20px'}}>
+            {balanceHistory.length === 0 && <div className="empty-state">Aucun relevé. Ajoute ton solde du jour.</div>}
+            {balanceHistory.slice().reverse().map((b, revIdx) => {
+              const idx = balanceHistory.length - 1 - revIdx;
+              return (
+                <div className="history-row" key={idx}>
+                  <span className="history-date">{fmtDate(b.ts)}</span>
+                  <span>{b.amount.toLocaleString('fr-FR')} k</span>
+                  <span onClick={()=>deleteBalance(idx)} style={{cursor:'pointer'}}><IconTrash/></span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="fab" onClick={()=>setShowBalanceForm(!showBalanceForm)}><IconPlus/></div>
+          {showBalanceForm && (
+            <div className="sheet">
+              <label>Kamas en poche aujourd'hui</label>
+              <input type="number" placeholder="ex: 250000" value={balanceInput} onChange={e=>setBalanceInput(e.target.value)} />
+              <button className="btn-primary" onClick={addBalance}>Enregistrer</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'stock' && (
+        <div>
+          <div className="section-title">Ta réserve de ressources</div>
+          <div className="card-list">
+            {holdingsList.length === 0 && <div className="empty-state">Aucun stock. Touche + pour ajouter un achat.</div>}
+            {holdingsList.map(h => (
+              <div className="item-card" key={h.id} onClick={()=>setSelectedHoldingId(h.id)}>
+                <div className="avatar" style={{fontSize: market[h.id] && market[h.id].category ? 18 : 14}}>{market[h.id] && market[h.id].category ? categoryInfo(market[h.id].category).emoji : initials(h.name)}</div>
+                <div className="item-info"><div className="item-name">{h.name}</div><div className="item-meta">{h.totalQty} unités · coût moy. {h.avgCost.toFixed(1)} k</div></div>
+                <div className="item-trailing">
+                  <div className="item-price">seuil {h.breakeven.toFixed(0)} k</div>
+                  {h.currentPrice != null && <span className={"badge "+(h.currentPrice>=h.breakeven?'up':'down')}>{h.currentPrice.toFixed(0)} k</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="fab" onClick={()=>setShowLotForm(!showLotForm)}><IconPlus/></div>
+          {showLotForm && (
+            <div className="sheet">
+              <label>Ressource achetée</label>
+              <select value={lotItemId} onChange={e=>setLotItemId(e.target.value)}>
+                <option value="">Choisir dans le marché...</option>
+                {marketList.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <label>Quantité achetée</label>
+              <input type="number" placeholder="ex: 50" value={lotQty} onChange={e=>setLotQty(e.target.value)} />
+              <label>Prix payé par unité (kamas)</label>
+              <input type="number" placeholder="ex: 5000" value={lotPrice} onChange={e=>setLotPrice(e.target.value)} />
+              {marketList.length===0 && <div className="warn-text">Ajoute d'abord des ressources dans le Marché.</div>}
+              <button className="btn-primary" onClick={addLot}>Ajouter à ma banque</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [market, setMarket] = useStorage(MARKET_KEY);
   const [crafts, setCrafts] = useStorage(CRAFT_KEY);
+  const [bank, setBank] = useStorage(BANK_KEY);
   const [facade, setFacade] = useState('market');
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
@@ -593,7 +818,7 @@ function App() {
   function showToast(msg) { setToast(msg); setTimeout(()=>setToast(null), 2200); }
 
   function exportData() {
-    const payload = { exportedAt: new Date().toISOString(), market: market || {}, crafts: crafts || {} };
+    const payload = { exportedAt: new Date().toISOString(), market: market || {}, crafts: crafts || {}, bank: bank || {} };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -615,8 +840,10 @@ function App() {
         const parsed = JSON.parse(ev.target.result);
         const importedMarket = parsed.market || {};
         const importedCrafts = parsed.crafts || {};
+        const importedBank = parsed.bank || {};
         await setMarket(importedMarket);
         await setCrafts(importedCrafts);
+        await setBank(importedBank);
         showToast('Données importées avec succès');
       } catch (err) {
         showToast('Fichier invalide, import annulé');
@@ -636,10 +863,13 @@ function App() {
         <div className="icon-btn" onClick={triggerImport} title="Importer une sauvegarde"><IconImport/></div>
         <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={handleImportFile} />
       </div>
-      {facade === 'market' ? <MarketFacade market={market} setMarket={setMarket} /> : <CraftFacade market={market} crafts={crafts} setCrafts={setCrafts} />}
+      {facade === 'market' && <MarketFacade market={market} setMarket={setMarket} />}
+      {facade === 'craft' && <CraftFacade market={market} crafts={crafts} setCrafts={setCrafts} />}
+      {facade === 'bank' && <BankFacade market={market} bank={bank} setBank={setBank} />}
       <div className="bottom-nav">
         <div className={"nav-btn"+(facade==='market'?' active':'')} onClick={()=>setFacade('market')}><IconMarket active={facade==='market'}/><div className="nav-label">Marché</div></div>
         <div className={"nav-btn"+(facade==='craft'?' active':'')} onClick={()=>setFacade('craft')}><IconCraft active={facade==='craft'}/><div className="nav-label">Atelier</div></div>
+        <div className={"nav-btn"+(facade==='bank'?' active':'')} onClick={()=>setFacade('bank')}><IconBank active={facade==='bank'}/><div className="nav-label">Banque</div></div>
       </div>
     </div>
   );
