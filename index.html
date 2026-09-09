@@ -132,6 +132,7 @@ const { useState, useEffect, useMemo, useRef } = React;
 const MARKET_KEY = 'kamasstat-market-v1';
 const CRAFT_KEY = 'kamasstat-crafts-v1';
 const BANK_KEY = 'kamasstat-bank-v1';
+const FACADE_KEY = 'kamasstat-active-facade';
 const COMMISSION = 0.03;
 const PACK_SIZES = [1, 10, 100, 1000];
 
@@ -249,6 +250,22 @@ function fmtDate(ts) {
   return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
 }
 function initials(name) { return name.trim().slice(0,2).toUpperCase(); }
+
+// Icônes originales dessinées pour des ressources spécifiques (jamais copiées du jeu)
+const IconRuneGaPme = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <path d="M12 2L19 7L17 20H7L5 7L12 2Z" fill="#22C55E" stroke="#14532D" strokeWidth="1"/>
+    <path d="M12 2L12 20M5 7L19 7M8.5 7L7 20M15.5 7L17 20" stroke="#14532D" strokeWidth="0.8" opacity="0.5"/>
+    <path d="M10 11L12 9L14 11L12 15L10 11Z" fill="#BBF7D0" stroke="#14532D" strokeWidth="0.6"/>
+  </svg>
+);
+const CUSTOM_ICONS = {
+  'rune ga pme': IconRuneGaPme,
+};
+function customIconFor(name) {
+  const key = name.trim().toLowerCase();
+  return CUSTOM_ICONS[key] || null;
+}
 
 function Sparkline({ series }) {
   if (series.length < 2) return <svg width="48" height="26"><line x1="0" y1="13" x2="48" y2="13" stroke="#252D3D" strokeWidth="1.5" /></svg>;
@@ -425,7 +442,7 @@ function MarketFacade({ market, setMarket }) {
         {list.length===0 && <div className="empty-state">Aucune entrée. Touche le bouton + pour ajouter un prix.</div>}
         {list.map(it => (
           <div className="item-card" key={it.id} onClick={()=>setSelectedId(it.id)}>
-            <div className="avatar" style={{fontSize: it.category ? 18 : 14}}>{it.category ? categoryInfo(it.category).emoji : initials(it.name)}</div>
+            <div className="avatar" style={{fontSize: it.category ? 18 : 14}}>{customIconFor(it.name) ? React.createElement(customIconFor(it.name)) : (it.category ? categoryInfo(it.category).emoji : initials(it.name))}</div>
             <div className="item-info"><div className="item-name">{it.name}</div><div className="item-meta">{it.category ? categoryInfo(it.category).label+' · ' : ''}{it.last.price} k / {it.last.packSize}</div></div>
             <div className="item-spark"><Sparkline series={it.series} /></div>
             <div className="item-trailing">
@@ -776,7 +793,7 @@ function BankFacade({ market, bank, setBank }) {
             {holdingsList.length === 0 && <div className="empty-state">Aucun stock. Touche + pour ajouter un achat.</div>}
             {holdingsList.map(h => (
               <div className="item-card" key={h.id} onClick={()=>setSelectedHoldingId(h.id)}>
-                <div className="avatar" style={{fontSize: market[h.id] && market[h.id].category ? 18 : 14}}>{market[h.id] && market[h.id].category ? categoryInfo(market[h.id].category).emoji : initials(h.name)}</div>
+                <div className="avatar" style={{fontSize: market[h.id] && market[h.id].category ? 18 : 14}}>{customIconFor(h.name) ? React.createElement(customIconFor(h.name)) : (market[h.id] && market[h.id].category ? categoryInfo(market[h.id].category).emoji : initials(h.name))}</div>
                 <div className="item-info"><div className="item-name">{h.name}</div><div className="item-meta">{h.totalQty} unités · coût moy. {h.avgCost.toFixed(1)} k</div></div>
                 <div className="item-trailing">
                   <div className="item-price">seuil {h.breakeven.toFixed(0)} k</div>
@@ -811,9 +828,34 @@ function App() {
   const [market, setMarket] = useStorage(MARKET_KEY);
   const [crafts, setCrafts] = useStorage(CRAFT_KEY);
   const [bank, setBank] = useStorage(BANK_KEY);
-  const [facade, setFacade] = useState('market');
+  const [facade, setFacadeState] = useState('market');
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      const saved = await storageGet(FACADE_KEY);
+      if (saved === 'market' || saved === 'craft' || saved === 'bank') setFacadeState(saved);
+    })();
+  }, []);
+
+  function setFacade(f) {
+    setFacadeState(f);
+    storageSet(FACADE_KEY, f);
+  }
+
+  const [marketResetKey, setMarketResetKey] = useState(0);
+  const [craftResetKey, setCraftResetKey] = useState(0);
+  const [bankResetKey, setBankResetKey] = useState(0);
+
+  function goToFacade(f) {
+    if (facade === f) {
+      if (f === 'market') setMarketResetKey(k => k+1);
+      if (f === 'craft') setCraftResetKey(k => k+1);
+      if (f === 'bank') setBankResetKey(k => k+1);
+    }
+    setFacade(f);
+  }
 
   function showToast(msg) { setToast(msg); setTimeout(()=>setToast(null), 2200); }
 
@@ -863,13 +905,13 @@ function App() {
         <div className="icon-btn" onClick={triggerImport} title="Importer une sauvegarde"><IconImport/></div>
         <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={handleImportFile} />
       </div>
-      {facade === 'market' && <MarketFacade market={market} setMarket={setMarket} />}
-      {facade === 'craft' && <CraftFacade market={market} crafts={crafts} setCrafts={setCrafts} />}
-      {facade === 'bank' && <BankFacade market={market} bank={bank} setBank={setBank} />}
+      {facade === 'market' && <MarketFacade key={'market-'+marketResetKey} market={market} setMarket={setMarket} />}
+      {facade === 'craft' && <CraftFacade key={'craft-'+craftResetKey} market={market} crafts={crafts} setCrafts={setCrafts} />}
+      {facade === 'bank' && <BankFacade key={'bank-'+bankResetKey} market={market} bank={bank} setBank={setBank} />}
       <div className="bottom-nav">
-        <div className={"nav-btn"+(facade==='market'?' active':'')} onClick={()=>setFacade('market')}><IconMarket active={facade==='market'}/><div className="nav-label">Marché</div></div>
-        <div className={"nav-btn"+(facade==='craft'?' active':'')} onClick={()=>setFacade('craft')}><IconCraft active={facade==='craft'}/><div className="nav-label">Atelier</div></div>
-        <div className={"nav-btn"+(facade==='bank'?' active':'')} onClick={()=>setFacade('bank')}><IconBank active={facade==='bank'}/><div className="nav-label">Banque</div></div>
+        <div className={"nav-btn"+(facade==='market'?' active':'')} onClick={()=>goToFacade('market')}><IconMarket active={facade==='market'}/><div className="nav-label">Marché</div></div>
+        <div className={"nav-btn"+(facade==='craft'?' active':'')} onClick={()=>goToFacade('craft')}><IconCraft active={facade==='craft'}/><div className="nav-label">Atelier</div></div>
+        <div className={"nav-btn"+(facade==='bank'?' active':'')} onClick={()=>goToFacade('bank')}><IconBank active={facade==='bank'}/><div className="nav-label">Banque</div></div>
       </div>
     </div>
   );
