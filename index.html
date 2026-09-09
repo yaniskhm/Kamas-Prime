@@ -311,6 +311,20 @@ function MarketFacade({ market, setMarket }) {
   const [fSubCategory, setFSubCategory] = useState('');
   const [activeCategory, setActiveCategory] = useState('toutes');
   const [activeSubCategory, setActiveSubCategory] = useState('toutes');
+  const [quickShowForm, setQuickShowForm] = useState(false);
+  const [quickPack, setQuickPack] = useState(100);
+  const [quickPrice, setQuickPrice] = useState('');
+
+  function addQuickEntry(id) {
+    if (!quickPrice) return;
+    const next = { ...market };
+    const item = { ...next[id] };
+    const unitPrice = Number(quickPrice) / quickPack;
+    item.history = [...item.history, { ts: new Date().toISOString(), price:Number(quickPrice), packSize:quickPack, unitPrice }];
+    next[id] = item;
+    setMarket(next);
+    setQuickPrice(''); setQuickShowForm(false);
+  }
 
   function addEntry() {
     if (!fName.trim() || !fPrice) return;
@@ -377,6 +391,18 @@ function MarketFacade({ market, setMarket }) {
           <div className="stat"><div className="v">{prices.length?Math.max(...prices).toFixed(1):'—'}</div><div className="l">MAX /U</div></div>
         </div>
         <div className="chart-card"><BigChart series={series} /></div>
+
+        <div className="fab" onClick={()=>setQuickShowForm(!quickShowForm)}><IconPlus/></div>
+        {quickShowForm && (
+          <div className="sheet">
+            <label>Vendu par lot de</label>
+            <div className="seg">{PACK_SIZES.map(p => <div key={p} className={quickPack===p?'sel':''} onClick={()=>setQuickPack(p)}>{p}</div>)}</div>
+            <label>Nouveau prix relevé pour ce lot (kamas)</label>
+            <input type="number" placeholder="ex: 1000" value={quickPrice} onChange={e=>setQuickPrice(e.target.value)} />
+            <button className="btn-primary" onClick={()=>addQuickEntry(selectedId)}>Ajouter ce relevé</button>
+          </div>
+        )}
+
         <div className="section-title">Relevés enregistrés</div>
         <div className="history-list">
           {it.history.slice().reverse().map((h, revIdx) => {
